@@ -17,8 +17,8 @@ cleaned_row_count = len(df_clean)
 st.subheader("결측치·이상치 처리 기준 및 편향 점검")
 st.markdown("""
 * **결측치 처리 기준:** 원본 데이터(27행) 내 빈 값(결측치)은 `0개`입니다.
-* **이상치 처리 기준:** 1999~2002년 평균 온도가 `8.16~8.78°C`로 2003년 이후(`13.79~15.84°C`)에 비해 비정상적으로 낮게 치솟는 단차가 존재하며, 원본 대기질 표에서도 해당 기간의 다른 기상 관측값(풍향·풍속 등)이 누락되어 있어 초기 측정 불완전 구간(이상치)으로 판단해 **4개 행(1999~2002년)을 제거**했습니다.
-* **처리로 생길 수 있는 치우침(편향):** 초기 4개년 데이터를 제거하면서 전체 표본 수가 27개에서 23개로 줄어들어, 2000년대 초반을 포함한 더 장기적인 기온 상승 추세가 축소되어 보이는 치우침(편향)이 생길 수 있습니다.
+* **이상치 처리 기준:** 1999~2002년 평균 온도가 `8.16~8.78°C`로 2003년 이후(`13.79~15.84°C`)에 비해 비정상적으로 낮게 측정되었고, 원본 대기질 표에서도 해당 기간의 다른 기상 관측값(풍향·풍속 등)이 누락되어 있어 초기 측정 불완전 구간(이상치)으로 판단해 **4개 행(1999~2002년)을 제거**했습니다.
+* **처리로 생길 수 있는 치우침(편향):** 초기 4개년 데이터를 제거하면서 표본 수가 27개에서 23개로 줄어들어, 2000년대 초반을 포함한 더 장기적인 기온 상승 추세가 축소되어 보이는 치우침(편향)이 생길 수 있습니다.
 """)
 
 st.write(f"전처리 전 데이터: **{original_row_count}행** ➔ 전처리 후 데이터: **{cleaned_row_count}행** (이상치 4행 제거)")
@@ -35,40 +35,50 @@ with col2:
     st.dataframe(df_clean.isnull().sum())
 
 
-# --- 2. 탐색적 데이터 분석 (그래프 2개) ---
+# --- 2. 탐색적 데이터 분석 (가독성 개선 그래프 2종) ---
 st.header("2. 탐색적 데이터 분석 (시각화)")
 
-# [그래프 1] 연도별 CO2 농도와 평균 온도 추이 (이중 축 선 그래프)
-st.subheader("그래프 1. 연도별 CO2 농도와 평균 온도 변화 추이 (2003~2025)")
+# [그래프 1] 연도별 CO2 농도와 평균 온도 추이 (상하 2단 비교로 겹침 제거)
+st.subheader("그래프 1. 연도별 CO2 농도 vs 평균 온도 변화 추이 (2003~2025)")
+st.caption("🔴 위쪽: 이산화탄소(CO2) 농도 추이 / 🔵 아래쪽: 평균 온도 추이 (같은 연도별로 위아래 비교)")
 
-base = alt.Chart(df_clean).encode(
-    x=alt.X('연도:O', title='연도 (Year)')
-)
-line_co2 = base.mark_line(color='red', point=True).encode(
-    y=alt.Y('CO2농도:Q', title='이산화탄소(CO2) 농도 (ppm)', scale=alt.Scale(zero=False)),
+chart_co2 = alt.Chart(df_clean).mark_line(color='#E63946', strokeWidth=3, point=alt.OverlayMarkDef(size=70, color='#E63946')).encode(
+    x=alt.X('연도:O', title=None, axis=alt.Axis(labelAngle=-45)),
+    y=alt.Y('CO2농도:Q', title='CO2 농도 (ppm)', scale=alt.Scale(zero=False)),
     tooltip=['연도', 'CO2농도', '평균온도']
+).properties(
+    title='① 연도별 이산화탄소(CO2) 농도 변화 (ppm)',
+    height=230
 )
-line_temp = base.mark_line(color='blue', strokeDash=[5, 5], point=True).encode(
+
+chart_temp = alt.Chart(df_clean).mark_line(color='#1D3557', strokeWidth=3, point=alt.OverlayMarkDef(size=70, color='#1D3557')).encode(
+    x=alt.X('연도:O', title='연도 (Year)', axis=alt.Axis(labelAngle=-45)),
     y=alt.Y('평균온도:Q', title='평균 온도 (°C)', scale=alt.Scale(zero=False)),
     tooltip=['연도', 'CO2농도', '평균온도']
-)
-chart1 = alt.layer(line_co2, line_temp).resolve_scale(
-    y='independent'
 ).properties(
-    title='연도별 이산화탄소(CO2) 농도와 평균 온도의 변화 (2003-2025)'
+    title='② 연도별 평균 온도 변화 (°C)',
+    height=230
 )
-st.altair_chart(chart1, use_container_width=True)
 
-# [그래프 2] CO2 농도와 평균 온도의 상관관계 (산점도)
+st.altair_chart(chart_co2, use_container_width=True)
+st.altair_chart(chart_temp, use_container_width=True)
+
+
+# [그래프 2] CO2 농도와 평균 온도의 상관관계 (산점도 + 추세선)
 st.subheader("그래프 2. CO2 농도와 평균 온도의 상관관계 (산점도)")
 corr_value = df_clean['CO2농도'].corr(df_clean['평균온도'])
 
-chart2 = alt.Chart(df_clean).mark_circle(size=80, color='purple').encode(
+points = alt.Chart(df_clean).mark_circle(size=90, color='#6A4C93', opacity=0.85).encode(
     x=alt.X('CO2농도:Q', title='이산화탄소(CO2) 농도 (ppm)', scale=alt.Scale(zero=False)),
     y=alt.Y('평균온도:Q', title='평균 온도 (°C)', scale=alt.Scale(zero=False)),
     tooltip=['연도', 'CO2농도', '평균온도']
-).properties(
-    title=f'CO2 농도와 평균 온도의 상관관계 (상관계수 r = {corr_value:.2f})'
+)
+
+trend_line = points.transform_regression('CO2농도', '평균온도').mark_line(color='#E63946', strokeDash=[6, 4], strokeWidth=2.5)
+
+chart2 = (points + trend_line).properties(
+    title=f'CO2 농도와 평균 온도의 상관관계 및 추세선 (상관계수 r = {corr_value:.2f})',
+    height=320
 )
 st.altair_chart(chart2, use_container_width=True)
 
