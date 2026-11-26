@@ -1,10 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-
-# 한글 폰트 설정 (로컬 테스트용 - 배포 서버에서는 영문 라벨이 안전하므로 그래프 내 텍스트는 영문 병기)
-plt.rc('font', family='Malgun Gothic')
-plt.rcParams['axes.unicode_minus'] = False
+import altair as alt
 
 st.title("🌍 지구 온도 상승, 정말 이산화탄소 때문일까?")
 
@@ -13,7 +9,6 @@ st.header("1. 데이터 전처리 및 개요")
 
 df = pd.read_csv("climate_data.csv")
 
-# [루브릭 상] 결측치와 이상치 구분, 전후 행 수, 처리로 인한 치우침(편향) 명시
 st.subheader("결측치·이상치 처리 기준 및 편향 점검")
 st.markdown("""
 * **결측치 처리 기준:** 1999~2025년 데이터 내 빈 값(결측치)이 `0개`이므로 삭제하거나 대체한 행이 없습니다.
@@ -27,7 +22,6 @@ cleaned_row_count = len(df_clean)
 
 st.write(f"전처리 전 데이터: **{original_row_count}행** ➔ 전처리 후 데이터: **{cleaned_row_count}행**")
 
-# [루브릭 상] 데이터 개요 (행·열 수, 자료형, 빈 값 개수)
 st.subheader("데이터 개요")
 st.write(f"데이터 크기: **{df_clean.shape[0]}행, {df_clean.shape[1]}열**")
 
@@ -40,41 +34,42 @@ with col2:
     st.dataframe(df_clean.isnull().sum())
 
 
-# --- 2. 탐색적 데이터 분석 (그래프 2개 이상) ---
+# --- 2. 탐색적 데이터 분석 (그래프 2개) ---
 st.header("2. 탐색적 데이터 분석 (시각화)")
 
 # [그래프 1] 연도별 CO2 농도와 평균 온도 추이 (이중 축 선 그래프)
 st.subheader("그래프 1. 연도별 CO2 농도와 평균 온도 변화 추이")
-fig1, ax1 = plt.subplots(figsize=(10, 4.5))
 
-color1 = 'tab:red'
-ax1.set_xlabel('Year (연도)', fontsize=11)
-ax1.set_ylabel('CO2 Concentration (ppm)', color=color1, fontsize=11)
-ax1.plot(df_clean['연도'], df_clean['CO2농도'], color=color1, marker='o', label='CO2 (ppm)')
-ax1.tick_params(axis='y', labelcolor=color1)
-
-ax2 = ax1.twinx()
-color2 = 'tab:blue'
-ax2.set_ylabel('Average Temperature (°C)', color=color2, fontsize=11)
-ax2.plot(df_clean['연도'], df_clean['평균온도'], color=color2, marker='s', linestyle='--', label='Temp (°C)')
-ax2.tick_params(axis='y', labelcolor=color2)
-
-plt.title('Annual CO2 Concentration vs. Average Temperature (1999-2025)', fontsize=13, fontweight='bold')
-fig1.tight_layout()
-st.pyplot(fig1)
+base = alt.Chart(df_clean).encode(
+    x=alt.X('연도:O', title='연도 (Year)')
+)
+line_co2 = base.mark_line(color='red', point=True).encode(
+    y=alt.Y('CO2농도:Q', title='이산화탄소(CO2) 농도 (ppm)', scale=alt.Scale(zero=False)),
+    tooltip=['연도', 'CO2농도', '평균온도']
+)
+line_temp = base.mark_line(color='blue', strokeDash=[5, 5], point=True).encode(
+    y=alt.Y('평균온도:Q', title='평균 온도 (°C)', scale=alt.Scale(zero=False)),
+    tooltip=['연도', 'CO2농도', '평균온도']
+)
+chart1 = alt.layer(line_co2, line_temp).resolve_scale(
+    y='independent'
+).properties(
+    title='연도별 이산화탄소(CO2) 농도와 평균 온도의 변화'
+)
+st.altair_chart(chart1, use_container_width=True)
 
 # [그래프 2] CO2 농도와 평균 온도의 상관관계 (산점도)
 st.subheader("그래프 2. CO2 농도와 평균 온도의 상관관계 (산점도)")
 corr_value = df_clean['CO2농도'].corr(df_clean['평균온도'])
 
-fig2, ax = plt.subplots(figsize=(10, 4.5))
-ax.scatter(df_clean['CO2농도'], df_clean['평균온도'], color='purple', alpha=0.75, s=60)
-ax.set_xlabel('CO2 Concentration (ppm)', fontsize=11)
-ax.set_ylabel('Average Temperature (°C)', fontsize=11)
-ax.set_title(f'Correlation between CO2 and Temperature (r = {corr_value:.2f})', fontsize=13, fontweight='bold')
-ax.grid(True, linestyle=':', alpha=0.6)
-fig2.tight_layout()
-st.pyplot(fig2)
+chart2 = alt.Chart(df_clean).mark_circle(size=80, color='purple').encode(
+    x=alt.X('CO2농도:Q', title='이산화탄소(CO2) 농도 (ppm)', scale=alt.Scale(zero=False)),
+    y=alt.Y('평균온도:Q', title='평균 온도 (°C)', scale=alt.Scale(zero=False)),
+    tooltip=['연도', 'CO2농도', '평균온도']
+).properties(
+    title=f'CO2 농도와 평균 온도의 상관관계 (상관계수 r = {corr_value:.2f})'
+)
+st.altair_chart(chart2, use_container_width=True)
 
 
 # --- 3. 분석 결과 및 인사이트 ---
