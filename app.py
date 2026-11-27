@@ -43,4 +43,7 @@ points = alt.Chart(df_clean).mark_circle(size=90, color='#6A4C93', opacity=0.85)
     tooltip=['연도', 'CO2농도', '평균온도']
 )
 
-trend_line = points.transform_regression('CO2농도', '평균온도').mark_line(color='#E63946', strokeDash=[6,
+trend_line = points.transform_regression('CO2농도', '평균온도').mark_line(color='#E63946', strokeDash=[6, 4], strokeWidth=2.5)
+
+chart2 = (points + trend_
+          
