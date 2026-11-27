@@ -45,5 +45,8 @@ points = alt.Chart(df_clean).mark_circle(size=90, color='#6A4C93', opacity=0.85)
 
 trend_line = points.transform_regression('CO2농도', '평균온도').mark_line(color='#E63946', strokeDash=[6, 4], strokeWidth=2.5)
 
-chart2 = (points + trend_
-          
+chart2 = (points + trend_line).properties(
+    title=f'③ CO2 농도와 평균 온도의 상관관계 (상관계수 r = {corr_value:.2f})',
+    height=320
+)
+st.altair_chart(chart2, use_container_width=True)
