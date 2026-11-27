@@ -4,26 +4,7 @@ import altair as alt
 
 st.title("🌍 지구 온도 상승, 정말 이산화탄소 때문일까?")
 
-# --- 1. 데이터 전처리 및 개요 ---
-st.header("1. 데이터 개요")
-
-df = pd.read_csv("climate_data.csv")
-original_row_count = len(df)
-df_clean = df[df['연도'] >= 2003].dropna()
-cleaned_row_count = len(df_clean)
-
-st.write(f"전처리 전: **{original_row_count}행** ➔ 전처리 후: **{cleaned_row_count}행** (1999~2002년 이상치 4행 제거) | 데이터 크기: **{df_clean.shape[0]}행, {df_clean.shape[1]}열**")
-
-col1, col2 = st.columns(2)
-with col1:
-    st.write("✔️ 열별 자료형")
-    st.dataframe(df_clean.dtypes.astype(str))
-with col2:
-    st.write("✔️ 열별 빈 값 개수")
-    st.dataframe(df_clean.isnull().sum())
-
-
-# --- 2. 데이터 시각화 ---
+# --- 데이터 시각화 ---
 st.header("2. 데이터 시각화")
 
 # 그래프 1: 연도별 CO2 농도 및 평균 온도 변화 추이
